@@ -92,6 +92,9 @@ class MainWindow(QMainWindow):
         self.urlbar_shortcut = QShortcut(QKeySequence("CTRL+U"), self)
         self.urlbar_shortcut.activated.connect(self.urlbarFocus)
 
+        self.refresh_shortcut = QShortcut(QKeySequence("F5"), self)
+        self.refresh_shortcut.activated.connect(self.browser.reload)
+
     def swithFullScreen(self):
         if self.isFullScreen:
             self.navigation_bar.setHidden(False)
