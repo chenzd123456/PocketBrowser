@@ -74,14 +74,26 @@ class MainWindow(QMainWindow):
         # 添加URL地址栏
         self._urlbar = QLineEdit()
         # 让地址栏能响应回车按键信号
-        self._urlbar.returnPressed.connect(self.navigate_to_url)
-
-        go_button = QAction('Go', self)
-        go_button.triggered.connect(self.navigate_to_url)
+        self._urlbar.returnPressed.connect(self.navigate_to_url)  
 
         self._navigation_bar.addSeparator()
         self._navigation_bar.addWidget(self._urlbar)
+
+        #地址跳转按钮
+        go_button = QAction(QIcon('icons/enter.png'), 'Go', self)
+        go_button.triggered.connect(self.navigate_to_url)
         self._navigation_bar.addAction(go_button)
+
+        self._navigation_bar.addSeparator()
+
+        #加收藏按钮
+        favorite_button = QAction(QIcon('icons/star.png'), 'Favorite', self)
+        favorite_button.triggered.connect(self.favorite)
+        self._navigation_bar.addAction(favorite_button)
+
+        #菜单按钮
+        menu_button = QAction(QIcon('icons/menu.png'), 'Menu', self)
+        self._navigation_bar.addAction(menu_button)
 
         # 让浏览器相应url地址的变化
         self._browser.urlChanged.connect(self.renew_urlbar)
@@ -126,6 +138,9 @@ class MainWindow(QMainWindow):
         # 将当前网页的链接更新到地址栏
         self._urlbar.setText(q.toString())
         self._urlbar.setCursorPosition(0)
+
+    def favorite(self):
+        pass
 
 
 if __name__ == "__main__":
