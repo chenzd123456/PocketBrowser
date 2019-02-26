@@ -107,7 +107,7 @@ class MainWindow(QMainWindow):
     def urlbarFocus(self):
         if self.isFullScreen:
             self.swithFullScreen()
-            self.urlbar.setFocus()
+        self.urlbar.setFocus()
 
     def navigate_to_url(self):
         q = QUrl(self.urlbar.text())
