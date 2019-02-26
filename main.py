@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         self.fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
         self.fullscreen_shortcut.activated.connect(self.swithFullScreen)
 
-        self.urlbar_shortcut = QShortcut(QKeySequence("CTRL+U"), self)
+        self.urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
         self.urlbar_shortcut.activated.connect(self.urlbarFocus)
 
         self.refresh_shortcut = QShortcut(QKeySequence("F5"), self)
