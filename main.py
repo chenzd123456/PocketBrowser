@@ -5,7 +5,8 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWebKitWidgets import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QMainWindow,
+                             QShortcut, QToolBar)
 
 
 class CustomWebPage(QWebPage):
@@ -34,15 +35,15 @@ class MainWindow(QMainWindow):
         self.show()
 
         # 设置浏览器
-        self._browser = QWebView()
+        self._webview = QWebView()
         # 设置浏览器UA
-        self._browser.setPage(CustomWebPage())
-        self._browser.setZoomFactor(0.8)
+        self._webview.setPage(CustomWebPage())
+        self._webview.setZoomFactor(0.8)
 
         # 指定打开界面的 URL
-        self._browser.setUrl(QUrl(self._url))
+        self._webview.setUrl(QUrl(self._url))
         # 添加浏览器到窗口中
-        self.setCentralWidget(self._browser)
+        self.setCentralWidget(self._webview)
 
         # 使用QToolBar创建导航栏，并使用QAction创建按钮
         # 添加
@@ -62,10 +63,10 @@ class MainWindow(QMainWindow):
         stop_button = QAction(QIcon('icons/close-circle.png'), 'Stop', self)
         reload_button = QAction(QIcon('icons/reload.png'), 'Reload', self)
 
-        back_button.triggered.connect(self._browser.back)
-        next_button.triggered.connect(self._browser.forward)
-        stop_button.triggered.connect(self._browser.stop)
-        reload_button.triggered.connect(self._browser.reload)
+        back_button.triggered.connect(self._webview.back)
+        next_button.triggered.connect(self._webview.forward)
+        stop_button.triggered.connect(self._webview.stop)
+        reload_button.triggered.connect(self._webview.reload)
 
         # 将按钮添加到导航栏上
         self._navigation_bar.addAction(back_button)
@@ -104,9 +105,9 @@ class MainWindow(QMainWindow):
         self._navigation_bar.addAction(menu_button)
 
         # 让浏览器相应url地址的变化
-        self._browser.urlChanged.connect(self._updateUrl)
-        self._browser.loadProgress.connect(self._updateProgress)
-        self._browser.loadFinished.connect(self._finishProgress)
+        self._webview.urlChanged.connect(self._updateUrl)
+        self._webview.loadProgress.connect(self._updateProgress)
+        self._webview.loadFinished.connect(self._finishProgress)
 
         # 快捷键
         self.fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
@@ -116,14 +117,14 @@ class MainWindow(QMainWindow):
         self.urlbar_shortcut.activated.connect(self.urlbarFocus)
 
         self.refresh_shortcut = QShortcut(QKeySequence("F5"), self)
-        self.refresh_shortcut.activated.connect(self._browser.reload)
+        self.refresh_shortcut.activated.connect(self._webview.reload)
 
     def swithFullScreen(self):
         if self._isFullScreen:
             self.outFullscreen()
         else:
             self.inFullscreen()
-        self._browser.setFocus()
+        self._webview.setFocus()
 
     def inFullscreen(self):
         self._navigation_bar.setHidden(True)
@@ -143,7 +144,7 @@ class MainWindow(QMainWindow):
         if url.scheme() == '':
             url.setScheme('http')
         self._url = url
-        self._browser.setUrl(url)
+        self._webview.setUrl(url)
 
     def _updateUrl(self, q):
         self._url = q.toString()
