@@ -22,6 +22,9 @@ class MainWindow(QMainWindow):
 
         self._isFullScreen = False
 
+        # 设置浏览器首页
+        self._url = 'https://www.baidu.com'
+
         # 设置窗口标题
         self.setWindowTitle('My Browser')
         # 设置窗口图标
@@ -35,10 +38,9 @@ class MainWindow(QMainWindow):
         # 设置浏览器UA
         self._browser.setPage(CustomWebPage())
         self._browser.setZoomFactor(0.8)
-        # 设置浏览器首页
-        url = 'https://www.baidu.com'
+
         # 指定打开界面的 URL
-        self._browser.setUrl(QUrl(url))
+        self._browser.setUrl(QUrl(self._url))
         # 添加浏览器到窗口中
         self.setCentralWidget(self._browser)
 
@@ -74,29 +76,31 @@ class MainWindow(QMainWindow):
         # 添加URL地址栏
         self._urlbar = QLineEdit()
         # 让地址栏能响应回车按键信号
-        self._urlbar.returnPressed.connect(self.navigate_to_url)  
+        self._urlbar.returnPressed.connect(self.navigate_to_url)
 
         self._navigation_bar.addSeparator()
         self._navigation_bar.addWidget(self._urlbar)
 
-        #地址跳转按钮
+        # 地址跳转按钮
         go_button = QAction(QIcon('icons/enter.png'), 'Go', self)
         go_button.triggered.connect(self.navigate_to_url)
         self._navigation_bar.addAction(go_button)
 
         self._navigation_bar.addSeparator()
 
-        #加收藏按钮
+        # 加收藏按钮
         favorite_button = QAction(QIcon('icons/star.png'), 'Favorite', self)
         favorite_button.triggered.connect(self.favorite)
         self._navigation_bar.addAction(favorite_button)
 
-        #菜单按钮
+        # 菜单按钮
         menu_button = QAction(QIcon('icons/menu.png'), 'Menu', self)
         self._navigation_bar.addAction(menu_button)
 
         # 让浏览器相应url地址的变化
-        self._browser.urlChanged.connect(self.renew_urlbar)
+        self._browser.urlChanged.connect(self._updateUrl)
+        self._browser.loadProgress.connect(self._updateProgress)
+        self._browser.loadFinished.connect(self._finishProgress)
 
         # 快捷键
         self.fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
@@ -132,11 +136,20 @@ class MainWindow(QMainWindow):
         url = QUrl(self._urlbar.text())
         if url.scheme() == '':
             url.setScheme('http')
+        self._url = url
         self._browser.setUrl(url)
 
-    def renew_urlbar(self, q):
-        # 将当前网页的链接更新到地址栏
-        self._urlbar.setText(q.toString())
+    def _updateUrl(self, q):
+        self._url = q.toString()
+
+    def _updateProgress(self, q):
+        self._updateUrlbar("[load " + str(q) + "%]" + self._url)
+
+    def _finishProgress(self, q):
+        self._updateUrlbar(self._url)
+
+    def _updateUrlbar(self, text):
+        self._urlbar.setText(text)
         self._urlbar.setCursorPosition(0)
 
     def favorite(self):
