@@ -93,6 +93,12 @@ class MainWindow(QMainWindow):
         favorite_button.triggered.connect(self.favorite)
         self._navigation_bar.addAction(favorite_button)
 
+        # 全屏按钮
+        fullscreen_button = QAction(
+            QIcon('icons/fullscreen.png'), 'Favorite', self)
+        fullscreen_button.triggered.connect(self.inFullscreen)
+        self._navigation_bar.addAction(fullscreen_button)
+
         # 菜单按钮
         menu_button = QAction(QIcon('icons/menu.png'), 'Menu', self)
         self._navigation_bar.addAction(menu_button)
