@@ -116,12 +116,12 @@ class MainWindow(QMainWindow):
         self._browser.setFocus()
 
     def inFullscreen(self):
-        self._navigation_bar.setHidden(False)
-        self._isFullScreen = False
-
-    def outFullscreen(self):
         self._navigation_bar.setHidden(True)
         self._isFullScreen = True
+
+    def outFullscreen(self):
+        self._navigation_bar.setHidden(False)
+        self._isFullScreen = False
 
     def urlbarFocus(self):
         if self._isFullScreen:
