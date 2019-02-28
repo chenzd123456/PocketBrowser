@@ -2,9 +2,9 @@
 
 import sys
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWebKitWidgets import *
+from PyQt5.QtCore import QSize, QUrl
+from PyQt5.QtGui import QIcon, QKeySequence
+from PyQt5.QtWebKitWidgets import QWebPage, QWebView
 from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QMainWindow,
                              QShortcut, QToolBar)
 
@@ -27,9 +27,9 @@ class MainWindow(QMainWindow):
         self._url = 'https://www.baidu.com'
 
         # 设置窗口标题
-        self.setWindowTitle('My Browser')
+        self.setWindowTitle('PocketBrowser')
         # 设置窗口图标
-        self.setWindowIcon(QIcon('icons/penguin.png'))
+        # self.setWindowIcon(QIcon('icons/penguin.png'))
         # 设置窗口大小480*270
         self.resize(480, 270)
         self.show()
@@ -91,13 +91,13 @@ class MainWindow(QMainWindow):
 
         # 加收藏按钮
         favorite_button = QAction(QIcon('icons/star.png'), 'Favorite', self)
-        favorite_button.triggered.connect(self.favorite)
+        favorite_button.triggered.connect(self._favorite)
         self._navigation_bar.addAction(favorite_button)
 
         # 全屏按钮
         fullscreen_button = QAction(
             QIcon('icons/fullscreen.png'), 'Favorite', self)
-        fullscreen_button.triggered.connect(self.inFullscreen)
+        fullscreen_button.triggered.connect(self._inFullscreen)
         self._navigation_bar.addAction(fullscreen_button)
 
         # 菜单按钮
@@ -110,33 +110,33 @@ class MainWindow(QMainWindow):
         self._webview.loadFinished.connect(self._finishProgress)
 
         # 快捷键
-        self.fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
-        self.fullscreen_shortcut.activated.connect(self.swithFullScreen)
+        fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
+        fullscreen_shortcut.activated.connect(self._swithFullScreen)
 
-        self.urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
-        self.urlbar_shortcut.activated.connect(self.urlbarFocus)
+        urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
+        urlbar_shortcut.activated.connect(self._urlbarFocus)
 
-        self.refresh_shortcut = QShortcut(QKeySequence("F5"), self)
-        self.refresh_shortcut.activated.connect(self._webview.reload)
+        refresh_shortcut = QShortcut(QKeySequence("F5"), self)
+        refresh_shortcut.activated.connect(self._webview.reload)
 
-    def swithFullScreen(self):
+    def _swithFullScreen(self):
         if self._isFullScreen:
-            self.outFullscreen()
+            self._outFullscreen()
         else:
-            self.inFullscreen()
+            self._inFullscreen()
         self._webview.setFocus()
 
-    def inFullscreen(self):
+    def _inFullscreen(self):
         self._navigation_bar.setHidden(True)
         self._isFullScreen = True
 
-    def outFullscreen(self):
+    def _outFullscreen(self):
         self._navigation_bar.setHidden(False)
         self._isFullScreen = False
 
-    def urlbarFocus(self):
+    def _urlbarFocus(self):
         if self._isFullScreen:
-            self.swithFullScreen()
+            self._swithFullScreen()
         self._urlbar.setFocus()
 
     def navigate_to_url(self):
@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
         self._urlbar.setText(text)
         self._urlbar.setCursorPosition(0)
 
-    def favorite(self):
+    def _favorite(self):
         pass
 
 
