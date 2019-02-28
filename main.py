@@ -140,11 +140,11 @@ class MainWindow(QMainWindow):
         self._urlbar.setFocus()
 
     def navigate_to_url(self):
-        url = QUrl(self._urlbar.text())
-        if url.scheme() == '':
-            url.setScheme('http')
-        self._url = url
-        self._webview.setUrl(url)
+        self._url = (self._urlbar.text())
+        qurl = QUrl(self._url)
+        if qurl.scheme() == '':
+            qurl.setScheme('http')
+        self._webview.setUrl(qurl)
 
     def _updateUrl(self, q):
         self._url = q.toString()
