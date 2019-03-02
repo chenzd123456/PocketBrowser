@@ -5,7 +5,8 @@ import sys
 from PyQt5.QtCore import QSize, QUrl
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWebKitWidgets import QWebPage, QWebView
-from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QMainWindow,
+from PyQt5.QtWidgets import (QAction, QApplication,
+                             QLineEdit, QMainWindow,
                              QShortcut, QToolBar)
 
 
@@ -41,7 +42,7 @@ class MainWindow(QMainWindow):
         self._webview.setZoomFactor(0.8)
 
         # 指定打开界面的 URL
-        self._webview.setUrl(QUrl(self._url))
+        #self._webview.setUrl(QUrl(self._url))
         # 添加浏览器到窗口中
         self.setCentralWidget(self._webview)
 
@@ -56,7 +57,6 @@ class MainWindow(QMainWindow):
         # 添加导航栏到窗口中
         self.addToolBar(self._navigation_bar)
 
-        # QAction类提供了抽象的用户界面action，这些action可以被放置在窗口部件中
         # 添加前进、后退、停止加载和刷新的按钮
         back_button = QAction(QIcon('icons/arrowleft.png'), 'Back', self)
         next_button = QAction(QIcon('icons/arrowright.png'), 'Forward', self)
@@ -118,6 +118,11 @@ class MainWindow(QMainWindow):
 
         refresh_shortcut = QShortcut(QKeySequence("F5"), self)
         refresh_shortcut.activated.connect(self._webview.reload)
+	
+        homepage_shortcut = QShortcut(QKeySequence("CTRL+H"), self)
+        homepage_shortcut.activated.connect(self._navigate_to_homepage)
+
+        self._navigate_to_homepage()
 
     def _swithFullScreen(self):
         if self._isFullScreen:
@@ -140,10 +145,13 @@ class MainWindow(QMainWindow):
         self._urlbar.setFocus()
 
     def navigate_to_url(self):
-        self._url = (self._urlbar.text())
-        qurl = QUrl(self._url)
+        qurl = QUrl(self._urlbar.text())
         if qurl.scheme() == '':
             qurl.setScheme('http')
+        self._webview.setUrl(qurl)
+
+    def _navigate_to_homepage(self):
+        qurl = QUrl("https://www.baidu.com")
         self._webview.setUrl(qurl)
 
     def _updateUrl(self, q):
