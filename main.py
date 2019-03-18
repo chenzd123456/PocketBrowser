@@ -10,7 +10,9 @@ from PyQt5.QtWidgets import (QAction, QApplication,
                              QShortcut, QToolBar)
 import threading
 
+
 class Singleton(object):
+    "单例模式工具类"
     _instance_lock = threading.Lock()
 
     def __init__(self):
