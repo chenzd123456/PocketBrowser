@@ -16,7 +16,7 @@ class CustomWebPage(QWebPage):
 
     def userAgentForUrl(self, url):
         config = Config()
-        return config.getUserAgent()
+        return config.user_agent
 
 
 class WebView(QWebView):
@@ -36,11 +36,21 @@ class Config(object):
         self._home_page_url = "https://www.baidu.com"
         self._user_agent = """Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_0 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A456 Safari/602.1"""
 
-    def getHomePage(self):
+    @property
+    def home_page_url(self):
         return self._home_page_url
 
-    def getUserAgent(self):
+    @home_page_url.setter
+    def home_page_url(self, url):
+        self._home_page_url = url
+
+    @property
+    def user_agent(self):
         return self._user_agent
+
+    @user_agent.setter
+    def user_agent(self, user_agent):
+        self._user_agent = user_agent
 
 
 class MainWindow(QMainWindow):
@@ -52,10 +62,10 @@ class MainWindow(QMainWindow):
 
         # 设置浏览器首页
         config = Config()
-        self._url = config.getHomePage()
+        self._url = config.home_page_url
 
         # 设置窗口标题
-        self.setWindowTitle('PocketBrowser')
+        self.setWindowTitle("PocketBrowser")
         # 设置窗口图标
         # self.setWindowIcon(QIcon('icons/penguin.png'))
         # 设置窗口大小480*270
