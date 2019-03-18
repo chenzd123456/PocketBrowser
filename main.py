@@ -27,6 +27,8 @@ class Singleton(object):
 
 
 class CustomWebPage(QWebPage):
+    "配置web页面属性"
+
     def __init__(self):
         super().__init__()
 
@@ -36,6 +38,8 @@ class CustomWebPage(QWebPage):
 
 
 class WebView(QWebView):
+    "WebView"
+
     def __init__(self, url=None):
         super().__init__()
         # 设置浏览器UA
@@ -48,6 +52,8 @@ class WebView(QWebView):
 
 
 class Config(Singleton):
+    "软件配置"
+
     def __init__(self):
         self._home_page_url = "https://www.baidu.com"
         self._user_agent = """Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_0 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A456 Safari/602.1"""
@@ -70,7 +76,8 @@ class Config(Singleton):
 
 
 class MainWindow(QMainWindow):
-    # noinspection PyUnresolvedReferences
+    "主窗体"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
