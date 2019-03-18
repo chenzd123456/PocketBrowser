@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (QAction, QApplication,
                              QLineEdit, QMainWindow,
                              QShortcut, QToolBar)
 import threading
+import sqlite3
 
 
 class Singleton(object):
@@ -55,6 +56,7 @@ class Config(Singleton):
     "软件配置"
 
     def __init__(self):
+        super().__init__()
         self._home_page_url = "https://www.baidu.com"
         self._user_agent = """Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_0 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A456 Safari/602.1"""
 
@@ -73,6 +75,24 @@ class Config(Singleton):
     @user_agent.setter
     def user_agent(self, user_agent):
         self._user_agent = user_agent
+
+
+class History(Singleton):
+    def __init__(self):
+        super().__init__()
+        self._db = sqlite3.connect('history.db').cursor()
+
+    def add_history(self, url, title=None, folder=None):
+        pass
+
+    def delete_history(self, id):
+        pass
+
+    def update_history(self, id, url, title=None, folder=None):
+        pass
+
+    def get_history(self):
+        pass
 
 
 class MainWindow(QMainWindow):
