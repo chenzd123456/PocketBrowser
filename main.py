@@ -11,6 +11,17 @@ from PyQt5.QtWidgets import (QAction, QApplication,
 import threading
 import sqlite3
 
+SQL_CMD = {
+    "CREATE_TALBE_HISTORY": "CREATE TABLE IF NOT EXISTS history ( \
+        id INTEGER PRIMARY KEY AUTOINCREMENT, \
+        url TEXT NOT NULL, \
+        title TEXT NOT NULL, \
+        time TimeStamp NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "ADD_HISTORY": "INSERT INTO history (url, title) VALUES (?,?);",
+    "READ_HISTORY": "SELECT * FROM history;",
+    "CLEAN_HISTORY": "DROP TABLE history;",
+}
+
 
 class CustomWebPage(QWebPage):
     "配置web页面属性"
@@ -35,6 +46,7 @@ class WebView(QWebView):
         # 指定打开界面的 URL
         if url != None:
             self.setUrl(QUrl(url))
+
 
 class Config(object):
     "软件配置"
@@ -81,28 +93,32 @@ class History(object):
 
     def __init__(self):
         self._db_conn = sqlite3.connect("history.db")
-        db_cur = self._db_conn.cursor()
-        db_cur.execute(
-            "CREATE TABLE IF NOT EXISTS history ( id INTEGER PRIMARY KEY AUTOINCREMENT,\
-                url TEXT NOT NULL,\
-                title TEXT NOT NULL,\
-                time TimeStamp NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-        )
-        self._db_conn.commit()
-    
+        self._init_db()
+
     def __del__(self):
         self._db_conn.close()
 
+    def _init_db(self):
+        db_cur = self._db_conn.cursor()
+        db_cur.execute(SQL_CMD["CREATE_TALBE_HISTORY"])
+        self._db_conn.commit()
+
     def add_history(self, url):
         db_cur = self._db_conn.cursor()
-        db_cur.execute("INSERT INTO history (url, title) VALUES ('" + url + "', '');")
+        db_cur.execute(SQL_CMD["ADD_HISTORY"], (url, ""))
         self._db_conn.commit()
 
     def get_history(self):
-        pass
+        db_cur = self._db_conn.cursor()
+        result = db_cur.execute(SQL_CMD["READ_HISTORY"])
+        return result
 
     def clean_history(self):
-        pass
+        db_cur = self._db_conn.cursor()
+        db_cur.execute(SQL_CMD["CLEAN_HISTORY"] +
+                       SQL_CMD["CREATE_TALBE_HISTORY"])
+        self._db_conn.commit()
+        self._init_db()
 
 
 class MainWindow(QMainWindow):
@@ -213,7 +229,7 @@ class MainWindow(QMainWindow):
         self._updateUrl(url)
         self._addHistory(url)
 
-    def _addHistory(self,url):
+    def _addHistory(self, url):
         History().add_history(url)
 
     def _swithFullScreen(self):
