@@ -12,21 +12,6 @@ import threading
 import sqlite3
 
 
-class Singleton(object):
-    "单例模式工具类"
-    _instance_lock = threading.Lock()
-
-    def __init__(self):
-        pass
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(Singleton, "_instance"):
-            with Singleton._instance_lock:
-                if not hasattr(Singleton, "_instance"):
-                    Singleton._instance = object.__new__(cls)
-        return Singleton._instance
-
-
 class CustomWebPage(QWebPage):
     "配置web页面属性"
 
@@ -51,12 +36,18 @@ class WebView(QWebView):
         if url != None:
             self.setUrl(QUrl(url))
 
-
-class Config(Singleton):
+class Config(object):
     "软件配置"
+    _instance_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(Config, "_instance"):
+            with Config._instance_lock:
+                if not hasattr(Config, "_instance"):
+                    Config._instance = object.__new__(cls)
+        return Config._instance
 
     def __init__(self):
-        super().__init__()
         self._home_page_url = "https://www.baidu.com"
         self._user_agent = """Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_0 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A456 Safari/602.1"""
 
@@ -77,21 +68,40 @@ class Config(Singleton):
         self._user_agent = user_agent
 
 
-class History(Singleton):
+class History(object):
+    "历史记录"
+    _instance_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(History, "_instance"):
+            with History._instance_lock:
+                if not hasattr(History, "_instance"):
+                    History._instance = object.__new__(cls)
+        return History._instance
+
     def __init__(self):
-        super().__init__()
-        self._db = sqlite3.connect('history.db').cursor()
+        self._db_conn = sqlite3.connect("history.db")
+        db_cur = self._db_conn.cursor()
+        db_cur.execute(
+            "CREATE TABLE IF NOT EXISTS history ( id INTEGER PRIMARY KEY AUTOINCREMENT,\
+                url TEXT NOT NULL,\
+                title TEXT NOT NULL,\
+                time TimeStamp NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        )
+        self._db_conn.commit()
+    
+    def __del__(self):
+        self._db_conn.close()
 
-    def add_history(self, url, title=None, folder=None):
-        pass
-
-    def delete_history(self, id):
-        pass
-
-    def update_history(self, id, url, title=None, folder=None):
-        pass
+    def add_history(self, url):
+        db_cur = self._db_conn.cursor()
+        db_cur.execute("INSERT INTO history (url, title) VALUES ('" + url + "', '');")
+        self._db_conn.commit()
 
     def get_history(self):
+        pass
+
+    def clean_history(self):
         pass
 
 
@@ -179,7 +189,7 @@ class MainWindow(QMainWindow):
         self._navigation_bar.addAction(menu_button)
 
         # 让浏览器相应url地址的变化
-        self._webview.urlChanged.connect(self._updateUrl)
+        self._webview.urlChanged.connect(self._urlChangedHandle)
         self._webview.loadProgress.connect(self._updateProgress)
         self._webview.loadFinished.connect(self._finishProgress)
 
@@ -197,6 +207,14 @@ class MainWindow(QMainWindow):
         homepage_shortcut.activated.connect(self._navigate_to_homepage)
 
         self._navigate_to_homepage()
+
+    def _urlChangedHandle(self, q):
+        url = q.toString()
+        self._updateUrl(url)
+        self._addHistory(url)
+
+    def _addHistory(self,url):
+        History().add_history(url)
 
     def _swithFullScreen(self):
         if self._isFullScreen:
@@ -219,7 +237,8 @@ class MainWindow(QMainWindow):
         self._urlbar.setFocus()
 
     def navigate_to_url(self):
-        qurl = QUrl(self._urlbar.text())
+        url = self._urlbar.text()
+        qurl = QUrl(url)
         if qurl.scheme() == '':
             qurl.setScheme('http')
         self._webview.setUrl(qurl)
@@ -228,17 +247,17 @@ class MainWindow(QMainWindow):
         qurl = QUrl("https://www.baidu.com")
         self._webview.setUrl(qurl)
 
-    def _updateUrl(self, q):
-        self._url = q.toString()
+    def _updateUrl(self, url):
+        self._url = url
 
-    def _updateProgress(self, q):
-        self._updateUrlbar("[load " + str(q) + "%]" + self._url)
+    def _updateProgress(self, i):
+        self._updateUrlbar("[load " + str(i) + "%]" + self._url)
 
-    def _finishProgress(self, q):
+    def _finishProgress(self):
         self._updateUrlbar(self._url)
 
-    def _updateUrlbar(self, text):
-        self._urlbar.setText(text)
+    def _updateUrlbar(self, url):
+        self._urlbar.setText(url)
         self._urlbar.setCursorPosition(0)
 
     def _favorite(self):
