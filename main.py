@@ -1,14 +1,11 @@
-#!/usr/bin/python3
-
 import sys
-
-from PyQt5.QtCore import QSize, QUrl
-from PyQt5.QtGui import QIcon, QKeySequence
-from PyQt5.QtWebKitWidgets import QWebPage, QWebView
-from PyQt5.QtWidgets import (QAction, QApplication,
-                             QLineEdit, QMainWindow,
-                             QShortcut, QToolBar)
 import threading
+
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWebKitWidgets import *
+from PyQt5.QtWidgets import *
+
 import sqlite3
 
 SQL_CMD = {
@@ -21,64 +18,6 @@ SQL_CMD = {
     "READ_HISTORY": "SELECT * FROM history;",
     "CLEAN_HISTORY": "DROP TABLE history;",
 }
-
-
-class CustomWebPage(QWebPage):
-    "配置web页面属性"
-
-    def __init__(self):
-        super().__init__()
-
-    def userAgentForUrl(self, url):
-        config = Config()
-        return config.user_agent
-
-
-class WebView(QWebView):
-    "WebView"
-
-    def __init__(self, url=None):
-        super().__init__()
-        # 设置浏览器UA
-        self.setPage(CustomWebPage())
-        # 设置浏览器缩放
-        self.setZoomFactor(0.8)
-        # 指定打开界面的 URL
-        if url != None:
-            self.setUrl(QUrl(url))
-
-
-class Config(object):
-    "软件配置"
-    _instance_lock = threading.Lock()
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(Config, "_instance"):
-            with Config._instance_lock:
-                if not hasattr(Config, "_instance"):
-                    Config._instance = object.__new__(cls)
-        return Config._instance
-
-    def __init__(self):
-        self._home_page_url = "https://www.baidu.com"
-        self._user_agent = """Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_0 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A456 Safari/602.1"""
-
-    @property
-    def home_page_url(self):
-        return self._home_page_url
-
-    @home_page_url.setter
-    def home_page_url(self, url):
-        self._home_page_url = url
-
-    @property
-    def user_agent(self):
-        return self._user_agent
-
-    @user_agent.setter
-    def user_agent(self, user_agent):
-        self._user_agent = user_agent
-
 
 class History(object):
     "历史记录"
@@ -120,172 +59,246 @@ class History(object):
         self._db_conn.commit()
         self._init_db()
 
+class WebWindow(QTabWidget):
+    class WebTab(object):
+        "标签页"
 
-class MainWindow(QMainWindow):
-    "主窗体"
+        def __init__(self, top, url):
+            self._top = top
+            self._index = self._top.count()
+            self._widget = WebWidget(url)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+            self._widget.windowTitleChanged.connect(self._titleChanged)
 
-        self._isFullScreen = False
+        @property
+        def widget(self):
+            return self._widget
 
-        # 设置浏览器首页
-        config = Config()
-        self._url = config.home_page_url
+        def _titleChanged(self, title):
+            self._top.setTabText(self._index, title)
+            self._top.setTabToolTip(self._index, title)
 
-        # 设置窗口标题
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+        self._tab_list = []
+
         self.setWindowTitle("PocketBrowser")
-        # 设置窗口图标
-        # self.setWindowIcon(QIcon('icons/penguin.png'))
-        # 设置窗口大小480*270
-        # self.resize(480, 270)
-        # self.show()
+        self.setMovable(True)
+        self.setTabsClosable(True)
+        self.setElideMode(Qt.ElideRight)
+        # self.tabBar().setExpanding(True)
+        # self.setTabBarAutoHide(True)
 
-        # 设置浏览器
-        self._webview = WebView(self._url)
-        # 添加浏览器到窗口中
+        self._addOneTab()
+
+        self.tabBarDoubleClicked.connect(self._delOneTab)
+        self.tabCloseRequested.connect(self._delOneTab)
+
+    def _addOneTab(self):
+        "添加一个标签页"
+        url = Config().init_page_url
+        tab = WebWindow.WebTab(self, url)
+        self._tab_list.append(tab)
+        self.addTab(tab.widget, url)
+
+    def _delOneTab(self, index):
+        "删除一个标签页"
+        self.removeTab(index)
+        if self.count() == 0:
+            self.close()
+
+
+class WebWidget(QMainWindow):
+    def __init__(self, url, parent=None, flags=Qt.WindowFlags()):
+        super().__init__(parent=parent, flags=flags)
+
+        self._webview = WebView(QUrl(url))
+        self._webview.urlChanged.connect(self._urlChanged)
+        self._webview.loadProgress.connect(self._loadProgress)
+        self._webview.loadFinished.connect(self._loadFinished)
+        self._webview.titleChanged.connect(self._titleChanged)
+
+        self._toolbar = ToolBar()
+        self._toolbar.back_button.triggered.connect(self._webview.back)
+        self._toolbar.next_button.triggered.connect(self._webview.forward)
+        self._toolbar.stop_button.triggered.connect(self._webview.stop)
+        self._toolbar.reload_button.triggered.connect(self._webview.reload)
+        self._toolbar.url_bar.returnPressed.connect(self._navToUrl)
+        self._toolbar.go_button.triggered.connect(self._navToUrl)
+
+        self.addToolBar(self._toolbar)
         self.setCentralWidget(self._webview)
 
-        # 使用QToolBar创建导航栏，并使用QAction创建按钮
-        # 添加
-        self._navigation_bar = QToolBar('Navigation')
-        self._navigation_bar.setMovable(False)
-        # 设定导航栏的高度
-        # self._navigation_bar.setFixedHeight(24)
-        # 设定图标的大小
-        self._navigation_bar.setIconSize(QSize(16, 16))
-        # 添加导航栏到窗口中
-        self.addToolBar(self._navigation_bar)
-
-        # 添加前进、后退、停止加载和刷新的按钮
-        back_button = QAction(QIcon('icons/arrowleft.png'), 'Back', self)
-        next_button = QAction(QIcon('icons/arrowright.png'), 'Forward', self)
-        stop_button = QAction(QIcon('icons/close-circle.png'), 'Stop', self)
-        reload_button = QAction(QIcon('icons/reload.png'), 'Reload', self)
-
-        back_button.triggered.connect(self._webview.back)
-        next_button.triggered.connect(self._webview.forward)
-        stop_button.triggered.connect(self._webview.stop)
-        reload_button.triggered.connect(self._webview.reload)
-
-        # 将按钮添加到导航栏上
-        self._navigation_bar.addAction(back_button)
-        self._navigation_bar.addAction(next_button)
-        self._navigation_bar.addAction(stop_button)
-        self._navigation_bar.addAction(reload_button)
-
-        # 添加URL地址栏
-        self._urlbar = QLineEdit()
-        # 让地址栏能响应回车按键信号
-        self._urlbar.returnPressed.connect(self.navigate_to_url)
-
-        self._navigation_bar.addSeparator()
-        self._navigation_bar.addWidget(self._urlbar)
-
-        # 地址跳转按钮
-        go_button = QAction(QIcon('icons/enter.png'), 'Go', self)
-        go_button.triggered.connect(self.navigate_to_url)
-        self._navigation_bar.addAction(go_button)
-
-        self._navigation_bar.addSeparator()
-
-        # 加收藏按钮
-        favorite_button = QAction(QIcon('icons/star.png'), 'Favorite', self)
-        favorite_button.triggered.connect(self._favorite)
-        self._navigation_bar.addAction(favorite_button)
-
-        # 全屏按钮
-        fullscreen_button = QAction(
-            QIcon('icons/fullscreen.png'), 'Favorite', self)
-        fullscreen_button.triggered.connect(self._inFullscreen)
-        self._navigation_bar.addAction(fullscreen_button)
-
-        # 菜单按钮
-        menu_button = QAction(QIcon('icons/menu.png'), 'Menu', self)
-        self._navigation_bar.addAction(menu_button)
-
-        # 让浏览器相应url地址的变化
-        self._webview.urlChanged.connect(self._urlChangedHandle)
-        self._webview.loadProgress.connect(self._updateProgress)
-        self._webview.loadFinished.connect(self._finishProgress)
-
-        # 快捷键
-        fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
-        fullscreen_shortcut.activated.connect(self._swithFullScreen)
-
-        urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
-        urlbar_shortcut.activated.connect(self._urlbarFocus)
-
-        refresh_shortcut = QShortcut(QKeySequence("F5"), self)
-        refresh_shortcut.activated.connect(self._webview.reload)
-
-        homepage_shortcut = QShortcut(QKeySequence("CTRL+H"), self)
-        homepage_shortcut.activated.connect(self._navigate_to_homepage)
-
-        self._navigate_to_homepage()
-
-    def _urlChangedHandle(self, q):
-        url = q.toString()
-        self._updateUrl(url)
-        self._addHistory(url)
-
-    def _addHistory(self, url):
-        History().add_history(url)
-
-    def _swithFullScreen(self):
-        if self._isFullScreen:
-            self._outFullscreen()
-        else:
-            self._inFullscreen()
-        self._webview.setFocus()
-
-    def _inFullscreen(self):
-        self._navigation_bar.setHidden(True)
-        self._isFullScreen = True
-
-    def _outFullscreen(self):
-        self._navigation_bar.setHidden(False)
-        self._isFullScreen = False
-
-    def _urlbarFocus(self):
-        if self._isFullScreen:
-            self._swithFullScreen()
-        self._urlbar.setFocus()
-
-    def navigate_to_url(self):
-        url = self._urlbar.text()
+    def _navToUrl(self):
+        "跳转网页"
+        url = self._toolbar.url_bar.text()
         qurl = QUrl(url)
         if qurl.scheme() == '':
             qurl.setScheme('http')
         self._webview.setUrl(qurl)
 
-    def _navigate_to_homepage(self):
-        qurl = QUrl("https://www.baidu.com")
-        self._webview.setUrl(qurl)
+    def _urlChanged(self, qurl):
+        "url改变"
+        url = qurl.toString()
+        self._toolbar.url_bar.setText(url)
+        self.setWindowTitle(url)
+        History().add_history(url)
 
-    def _updateUrl(self, url):
-        self._url = url
+    def _loadProgress(self, percent):
+        "加载进度改变"
+        title = self._webview.title()
+        self.setWindowTitle("[{}%]{}".format(percent, title))
 
-    def _updateProgress(self, i):
-        self._updateUrlbar("[load " + str(i) + "%]" + self._url)
+    def _loadFinished(self):
+        "加载完成"
+        title = self._webview.title()
+        self.setWindowTitle(title)
 
-    def _finishProgress(self):
-        self._updateUrlbar(self._url)
-
-    def _updateUrlbar(self, url):
-        self._urlbar.setText(url)
-        self._urlbar.setCursorPosition(0)
-
-    def _favorite(self):
-        pass
+    def _titleChanged(self, title):
+        "标题变化"
+        self.setWindowTitle(title)
 
 
-if __name__ == "__main__":
-    # 创建应用
+class UrlBar(QLineEdit):
+    "地址栏"
+
+    def __init__(self, str="", parent=None):
+        super().__init__(str, parent=parent)
+
+
+class ToolBar(QToolBar):
+    "工具栏"
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setMovable(False)
+        self.setIconSize(QSize(16, 16))
+        # self.setFixedHeight(28)
+
+        self._back_button = QAction(QIcon('icons/arrowleft.png'), 'Back', self)
+        self._next_button = QAction(
+            QIcon('icons/arrowright.png'), 'Forward', self)
+        self._stop_button = QAction(
+            QIcon('icons/close-circle.png'), 'Stop', self)
+        self._reload_button = QAction(
+            QIcon('icons/reload.png'), 'Reload', self)
+        self._url_bar = UrlBar()
+        self._go_button = QAction(QIcon('icons/enter.png'), 'Go', self)
+        self._favorite_button = QAction(
+            QIcon('icons/star.png'), 'Favorite', self)
+        self._fullscreen_button = QAction(
+            QIcon('icons/fullscreen.png'), 'Favorite', self)
+        self._menu_button = QAction(QIcon('icons/menu.png'), 'Menu', self)
+
+        self.addAction(self._back_button)
+        self.addAction(self._next_button)
+        self.addAction(self._stop_button)
+        self.addAction(self._reload_button)
+        self.addSeparator()
+        self.addWidget(self._url_bar)
+        self.addAction(self._go_button)
+        self.addSeparator()
+        self.addAction(self._favorite_button)
+        self.addAction(self._fullscreen_button)
+        self.addAction(self._menu_button)
+
+    @property
+    def back_button(self):
+        return self._back_button
+
+    @property
+    def next_button(self):
+        return self._next_button
+
+    @property
+    def stop_button(self):
+        return self._stop_button
+
+    @property
+    def reload_button(self):
+        return self._reload_button
+
+    @property
+    def url_bar(self):
+        return self._url_bar
+
+    @property
+    def go_button(self):
+        return self._go_button
+
+    @property
+    def favorite_button(self):
+        return self._favorite_button
+
+    @property
+    def fullscreen_button(self):
+        return self._fullscreen_button
+
+    @property
+    def menu_button(self):
+        return self._menu_button
+
+
+class CustomWebPage(QWebPage):
+    "配置web页面属性"
+
+    def __init__(self):
+        super().__init__()
+
+    def userAgentForUrl(self, url):
+        config = Config()
+        return config.user_agent
+
+
+class WebView(QWebView):
+    "Web视图"
+
+    def __init__(self, qurl=None):
+        super().__init__()
+        # 设置浏览器UA
+        self.setPage(CustomWebPage())
+        # 设置浏览器缩放
+        self.setZoomFactor(0.8)
+        # 指定打开界面的 URL
+        if qurl != None:
+            self.setUrl(qurl)
+
+
+class Config(object):
+    "浏览器配置"
+    _instance_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(Config, "_instance"):
+            with Config._instance_lock:
+                if not hasattr(Config, "_instance"):
+                    Config._instance = object.__new__(cls)
+        return Config._instance
+
+    def __init__(self):
+        self._init_page_url = "https://www.baidu.com"
+        self._user_agent = """Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_0 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/10.0 Mobile/14A456 Safari/602.1"""
+
+    @property
+    def init_page_url(self):
+        return self._init_page_url
+
+    @init_page_url.setter
+    def init_page_url(self, url):
+        self._init_page_url = url
+
+    @property
+    def user_agent(self):
+        return self._user_agent
+
+    @user_agent.setter
+    def user_agent(self, user_agent):
+        self._user_agent = user_agent
+
+
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    # 创建主窗口
-    window = MainWindow()
-    # 显示窗口
-    window.show()
-    # 运行应用，并监听事件
-    app.exec_()
+    main_window = WebWindow()
+    main_window.show()
+    sys.exit(app.exec_())
