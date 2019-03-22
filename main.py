@@ -1,12 +1,12 @@
+import sqlite3
 import sys
 import threading
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWebKitWidgets import *
-from PyQt5.QtWidgets import *
-
-import sqlite3
+from PyQt5.QtCore import QSize, Qt, QUrl, QPoint
+from PyQt5.QtGui import QIcon, QKeySequence
+from PyQt5.QtWebKitWidgets import QWebPage, QWebView
+from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QMainWindow,
+                             QShortcut, QTabWidget, QToolBar, QToolTip)
 
 SQL_CMD = {
     "CREATE_TALBE_HISTORY": "CREATE TABLE IF NOT EXISTS history ( \
@@ -17,7 +17,9 @@ SQL_CMD = {
     "ADD_HISTORY": "INSERT INTO history (url, title) VALUES (?,?);",
     "READ_HISTORY": "SELECT * FROM history;",
     "CLEAN_HISTORY": "DROP TABLE history;",
+    "UPDATE_HISTORY_TITLE": "UPDATE history SET title = ? WHERE url = ? ORDER BY id DESC LIMIT 1 ",
 }
+
 
 class History(object):
     "历史记录"
@@ -32,19 +34,16 @@ class History(object):
 
     def __init__(self):
         self._db_conn = sqlite3.connect("history.db")
-        self._init_db()
-
-    def __del__(self):
-        self._db_conn.close()
-
-    def _init_db(self):
         db_cur = self._db_conn.cursor()
         db_cur.execute(SQL_CMD["CREATE_TALBE_HISTORY"])
         self._db_conn.commit()
 
-    def add_history(self, url):
+    def __del__(self):
+        self._db_conn.close()
+
+    def add_history(self, url, title=""):
         db_cur = self._db_conn.cursor()
-        db_cur.execute(SQL_CMD["ADD_HISTORY"], (url, ""))
+        db_cur.execute(SQL_CMD["ADD_HISTORY"], (url, title))
         self._db_conn.commit()
 
     def get_history(self):
@@ -57,26 +56,15 @@ class History(object):
         db_cur.execute(SQL_CMD["CLEAN_HISTORY"] +
                        SQL_CMD["CREATE_TALBE_HISTORY"])
         self._db_conn.commit()
-        self._init_db()
+
+    def update_history_title(self, url, title):
+        db_cur = self._db_conn.cursor()
+        db_cur.execute(SQL_CMD["UPDATE_HISTORY_TITLE"], (title, url))
+        self._db_conn.commit()
+
 
 class WebWindow(QTabWidget):
-    class WebTab(object):
-        "标签页"
-
-        def __init__(self, top, url):
-            self._top = top
-            self._index = self._top.count()
-            self._widget = WebWidget(url)
-
-            self._widget.windowTitleChanged.connect(self._titleChanged)
-
-        @property
-        def widget(self):
-            return self._widget
-
-        def _titleChanged(self, title):
-            self._top.setTabText(self._index, title)
-            self._top.setTabToolTip(self._index, title)
+    "浏览器窗口"
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -84,23 +72,63 @@ class WebWindow(QTabWidget):
         self._tab_list = []
 
         self.setWindowTitle("PocketBrowser")
+
         self.setMovable(True)
         self.setTabsClosable(True)
         self.setElideMode(Qt.ElideRight)
         # self.tabBar().setExpanding(True)
+        # 当只有一个标签的时候隐藏标签
         # self.setTabBarAutoHide(True)
+        # 设置关闭标签后的行为 Qt.SelectLeftTab, Qt.SelectRightTab, Qt.SelectPreviousTab
+        # self.tarBar().setSelectionBehaviorOnRemove(Qt.SelectPreviousTab)
 
-        self._addOneTab()
+        self._addOneTabFore()
 
         self.tabBarDoubleClicked.connect(self._delOneTab)
         self.tabCloseRequested.connect(self._delOneTab)
 
-    def _addOneTab(self):
+        #### 快捷键 ####
+        # 按F11全屏
+        fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
+        fullscreen_shortcut.activated.connect(self._showFullScreen)
+        # 按ESC退出全屏
+        normalscreen_shortcut = QShortcut(QKeySequence("ESCAPE"), self)
+        normalscreen_shortcut.activated.connect(self._showNormalScreen)
+        # 按CTRL+N新建标签页
+        new_tab_shortcut = QShortcut(QKeySequence("CTRL+N"), self)
+        new_tab_shortcut.activated.connect(self._addOneTabFore)
+
+    def _swithFullScreen(self):
+        "切换全屏"
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
+    def _showFullScreen(self):
+        "全屏"
+        self.showFullScreen()
+        # height = self.height()
+        # width = self.width()
+        # QToolTip.showText(QPoint(width/2, height/2), "ESC")
+
+    def _showNormalScreen(self):
+        "退出全屏"
+        self.showNormal()
+
+    def _addOneTab(self, url=None):
         "添加一个标签页"
-        url = Config().init_page_url
-        tab = WebWindow.WebTab(self, url)
-        self._tab_list.append(tab)
-        self.addTab(tab.widget, url)
+        if url == None:
+            url = Config().init_page_url
+        tab = WebTab(url=url)
+        self.addTab(tab, url)
+        tab.windowTitleChanged.connect(
+            lambda title: self.setTabText(self.count() - 1, title))
+
+    def _addOneTabFore(self, url=None):
+        "前台添加一个标签页"
+        self._addOneTab(url)
+        self.setCurrentIndex(self.count() - 1)
 
     def _delOneTab(self, index):
         "删除一个标签页"
@@ -109,11 +137,15 @@ class WebWindow(QTabWidget):
             self.close()
 
 
-class WebWidget(QMainWindow):
-    def __init__(self, url, parent=None, flags=Qt.WindowFlags()):
+class WebTab(QMainWindow):
+    "浏览器页面"
+
+    def __init__(self, url=None, parent=None, flags=Qt.WindowFlags()):
         super().__init__(parent=parent, flags=flags)
 
-        self._webview = WebView(QUrl(url))
+        if url != None:
+            self._webview = WebView(QUrl(url))
+
         self._webview.urlChanged.connect(self._urlChanged)
         self._webview.loadProgress.connect(self._loadProgress)
         self._webview.loadFinished.connect(self._loadFinished)
@@ -129,6 +161,14 @@ class WebWidget(QMainWindow):
 
         self.addToolBar(self._toolbar)
         self.setCentralWidget(self._webview)
+
+        #### 快捷键 ####
+        # 按CTRL+G焦点跳转到地址栏
+        urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
+        urlbar_shortcut.activated.connect(self._toolbar.url_bar.setFocus)
+        # 按F5刷新页面
+        refresh_shortcut = QShortcut(QKeySequence("F5"), self)
+        refresh_shortcut.activated.connect(self._webview.reload)
 
     def _navToUrl(self):
         "跳转网页"
@@ -158,6 +198,7 @@ class WebWidget(QMainWindow):
     def _titleChanged(self, title):
         "标题变化"
         self.setWindowTitle(title)
+        History().update_history_title(self._webview.url().toString(), title)
 
 
 class UrlBar(QLineEdit):
