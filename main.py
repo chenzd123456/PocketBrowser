@@ -6,7 +6,7 @@ from PyQt5.QtCore import QSize, Qt, QUrl, QPoint
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWebKitWidgets import QWebPage, QWebView
 from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QMainWindow,
-                             QShortcut, QTabWidget, QToolBar, QToolTip)
+                             QShortcut, QTabWidget, QToolBar, QToolTip, QStatusBar)
 
 SQL_CMD = {
     "CREATE_TALBE_HISTORY": "CREATE TABLE IF NOT EXISTS history ( \
@@ -62,30 +62,15 @@ class History(object):
         db_cur.execute(SQL_CMD["UPDATE_HISTORY_TITLE"], (title, url))
         self._db_conn.commit()
 
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None, flags=Qt.WindowFlags()):
+        super().__init__(parent=parent, flags=flags)
 
-class WebWindow(QTabWidget):
-    "浏览器窗口"
+        tab_web_widget = TabWebWidget()
+        status_bar = StatusBar()
 
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-
-        self._tab_list = []
-
-        self.setWindowTitle("PocketBrowser")
-
-        self.setMovable(True)
-        self.setTabsClosable(True)
-        self.setElideMode(Qt.ElideRight)
-        # self.tabBar().setExpanding(True)
-        # 当只有一个标签的时候隐藏标签
-        # self.setTabBarAutoHide(True)
-        # 设置关闭标签后的行为 Qt.SelectLeftTab, Qt.SelectRightTab, Qt.SelectPreviousTab
-        # self.tarBar().setSelectionBehaviorOnRemove(Qt.SelectPreviousTab)
-
-        self._addOneTabFore()
-
-        self.tabBarDoubleClicked.connect(self._delOneTab)
-        self.tabCloseRequested.connect(self._delOneTab)
+        self.setCentralWidget(tab_web_widget)
+        self.setStatusBar(status_bar)
 
         #### 快捷键 ####
         # 按F11全屏
@@ -94,9 +79,6 @@ class WebWindow(QTabWidget):
         # 按ESC退出全屏
         normalscreen_shortcut = QShortcut(QKeySequence("ESCAPE"), self)
         normalscreen_shortcut.activated.connect(self._showNormalScreen)
-        # 按CTRL+N新建标签页
-        new_tab_shortcut = QShortcut(QKeySequence("CTRL+N"), self)
-        new_tab_shortcut.activated.connect(self._addOneTabFore)
 
     def _swithFullScreen(self):
         "切换全屏"
@@ -116,11 +98,40 @@ class WebWindow(QTabWidget):
         "退出全屏"
         self.showNormal()
 
+class TabWebWidget(QTabWidget):
+    "多标签浏览器控件"
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+        self._tab_list = []
+
+        self.setWindowTitle("PocketBrowser")
+
+        # self.setMovable(True)
+        # self.setTabsClosable(True)
+        self.setElideMode(Qt.ElideRight)
+        # self.tabBar().setExpanding(True)
+        # 当只有一个标签的时候隐藏标签
+        # self.setTabBarAutoHide(True)
+        # 设置关闭标签后的行为 Qt.SelectLeftTab, Qt.SelectRightTab, Qt.SelectPreviousTab
+        # self.tarBar().setSelectionBehaviorOnRemove(Qt.SelectPreviousTab)
+
+        self._addOneTabFore()
+
+        self.tabBarDoubleClicked.connect(self._delOneTab)
+        self.tabCloseRequested.connect(self._delOneTab)
+
+        #### 快捷键 ####
+        # 按CTRL+N新建标签页
+        new_tab_shortcut = QShortcut(QKeySequence("CTRL+N"), self)
+        new_tab_shortcut.activated.connect(self._addOneTabFore)
+
     def _addOneTab(self, url=None):
         "添加一个标签页"
         if url == None:
             url = Config().init_page_url
-        tab = WebTab(url=url)
+        tab = WebWidget(url=url)
         self.addTab(tab, url)
         tab.windowTitleChanged.connect(
             lambda title: self.setTabText(self.count() - 1, title))
@@ -133,11 +144,10 @@ class WebWindow(QTabWidget):
     def _delOneTab(self, index):
         "删除一个标签页"
         self.removeTab(index)
-        if self.count() == 0:
-            self.close()
+        # if self.count() == 0:
+        #     self.close()
 
-
-class WebTab(QMainWindow):
+class WebWidget(QMainWindow):
     "浏览器页面"
 
     def __init__(self, url=None, parent=None, flags=Qt.WindowFlags()):
@@ -151,28 +161,19 @@ class WebTab(QMainWindow):
         self._webview.loadFinished.connect(self._loadFinished)
         self._webview.titleChanged.connect(self._titleChanged)
 
-        self._toolbar = ToolBar()
-        self._toolbar.back_button.triggered.connect(self._webview.back)
-        self._toolbar.next_button.triggered.connect(self._webview.forward)
-        self._toolbar.stop_button.triggered.connect(self._webview.stop)
-        self._toolbar.reload_button.triggered.connect(self._webview.reload)
-        self._toolbar.url_bar.returnPressed.connect(self._navToUrl)
-        self._toolbar.go_button.triggered.connect(self._navToUrl)
-
-        self.addToolBar(self._toolbar)
         self.setCentralWidget(self._webview)
 
         #### 快捷键 ####
         # 按CTRL+G焦点跳转到地址栏
-        urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
-        urlbar_shortcut.activated.connect(self._toolbar.url_bar.setFocus)
+        # urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
+        # urlbar_shortcut.activated.connect(self._toolbar.url_bar.setFocus)
         # 按F5刷新页面
-        refresh_shortcut = QShortcut(QKeySequence("F5"), self)
-        refresh_shortcut.activated.connect(self._webview.reload)
+        # refresh_shortcut = QShortcut(QKeySequence("F5"), self)
+        # refresh_shortcut.activated.connect(self._webview.reload)
 
     def _navToUrl(self):
         "跳转网页"
-        url = self._toolbar.url_bar.text()
+        # url = self._toolbar.url_bar.text()
         qurl = QUrl(url)
         if qurl.scheme() == '':
             qurl.setScheme('http')
@@ -181,7 +182,7 @@ class WebTab(QMainWindow):
     def _urlChanged(self, qurl):
         "url改变"
         url = qurl.toString()
-        self._toolbar.url_bar.setText(url)
+        # self._toolbar.url_bar.setText(url)
         self.setWindowTitle(url)
         History().add_history(url)
 
@@ -199,87 +200,6 @@ class WebTab(QMainWindow):
         "标题变化"
         self.setWindowTitle(title)
         History().update_history_title(self._webview.url().toString(), title)
-
-
-class UrlBar(QLineEdit):
-    "地址栏"
-
-    def __init__(self, str="", parent=None):
-        super().__init__(str, parent=parent)
-
-
-class ToolBar(QToolBar):
-    "工具栏"
-
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.setMovable(False)
-        self.setIconSize(QSize(16, 16))
-        # self.setFixedHeight(28)
-
-        self._back_button = QAction(QIcon('icons/arrowleft.png'), 'Back', self)
-        self._next_button = QAction(
-            QIcon('icons/arrowright.png'), 'Forward', self)
-        self._stop_button = QAction(
-            QIcon('icons/close-circle.png'), 'Stop', self)
-        self._reload_button = QAction(
-            QIcon('icons/reload.png'), 'Reload', self)
-        self._url_bar = UrlBar()
-        self._go_button = QAction(QIcon('icons/enter.png'), 'Go', self)
-        self._favorite_button = QAction(
-            QIcon('icons/star.png'), 'Favorite', self)
-        self._fullscreen_button = QAction(
-            QIcon('icons/fullscreen.png'), 'Favorite', self)
-        self._menu_button = QAction(QIcon('icons/menu.png'), 'Menu', self)
-
-        self.addAction(self._back_button)
-        self.addAction(self._next_button)
-        self.addAction(self._stop_button)
-        self.addAction(self._reload_button)
-        self.addSeparator()
-        self.addWidget(self._url_bar)
-        self.addAction(self._go_button)
-        self.addSeparator()
-        self.addAction(self._favorite_button)
-        self.addAction(self._fullscreen_button)
-        self.addAction(self._menu_button)
-
-    @property
-    def back_button(self):
-        return self._back_button
-
-    @property
-    def next_button(self):
-        return self._next_button
-
-    @property
-    def stop_button(self):
-        return self._stop_button
-
-    @property
-    def reload_button(self):
-        return self._reload_button
-
-    @property
-    def url_bar(self):
-        return self._url_bar
-
-    @property
-    def go_button(self):
-        return self._go_button
-
-    @property
-    def favorite_button(self):
-        return self._favorite_button
-
-    @property
-    def fullscreen_button(self):
-        return self._fullscreen_button
-
-    @property
-    def menu_button(self):
-        return self._menu_button
-
 
 class CustomWebPage(QWebPage):
     "配置web页面属性"
@@ -304,6 +224,11 @@ class WebView(QWebView):
         # 指定打开界面的 URL
         if qurl != None:
             self.setUrl(qurl)
+
+class StatusBar(QStatusBar):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
 
 
 class Config(object):
@@ -340,6 +265,6 @@ class Config(object):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    main_window = WebWindow()
+    main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())
