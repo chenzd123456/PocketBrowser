@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super().__init__(parent=parent, flags=flags)
 
-        tab_web_widget = TabWebWidget()
+        tab_web_widget = TabWebWidget(self)
         status_bar = StatusBar()
 
         self.setCentralWidget(tab_web_widget)
@@ -101,12 +101,10 @@ class MainWindow(QMainWindow):
 class TabWebWidget(QTabWidget):
     "多标签浏览器控件"
 
-    def __init__(self, parent=None):
+    def __init__(self, top, parent=None):
         super().__init__(parent=parent)
-
-        self._tab_list = []
-
-        self.setWindowTitle("PocketBrowser")
+        
+        self._top = top
 
         # self.setMovable(True)
         # self.setTabsClosable(True)
@@ -131,10 +129,17 @@ class TabWebWidget(QTabWidget):
         "添加一个标签页"
         if url == None:
             url = Config().init_page_url
-        tab = WebWidget(url=url)
-        self.addTab(tab, url)
-        tab.windowTitleChanged.connect(
-            lambda title: self.setTabText(self.count() - 1, title))
+        tab = WebView(QUrl(url))
+        index = self.addTab(tab, url)
+
+        tab.urlChanged.connect(
+            lambda qurl: self.setTabText(index, qurl.toString()))
+        tab.titleChanged.connect(
+            lambda title: self.setTabText(index, title))
+        tab.loadProgress.connect(
+            lambda progress: self._top.statusBar().showMessage("Loading {}%".format(progress), 1000))
+        tab.loadFinished.connect(
+            lambda :self._top.statusBar().showMessage("Load Finished", 1000))
 
     def _addOneTabFore(self, url=None):
         "前台添加一个标签页"
@@ -144,62 +149,9 @@ class TabWebWidget(QTabWidget):
     def _delOneTab(self, index):
         "删除一个标签页"
         self.removeTab(index)
-        # if self.count() == 0:
-        #     self.close()
+        if self.count() == 0:
+            self._top.close()
 
-class WebWidget(QMainWindow):
-    "浏览器页面"
-
-    def __init__(self, url=None, parent=None, flags=Qt.WindowFlags()):
-        super().__init__(parent=parent, flags=flags)
-
-        if url != None:
-            self._webview = WebView(QUrl(url))
-
-        self._webview.urlChanged.connect(self._urlChanged)
-        self._webview.loadProgress.connect(self._loadProgress)
-        self._webview.loadFinished.connect(self._loadFinished)
-        self._webview.titleChanged.connect(self._titleChanged)
-
-        self.setCentralWidget(self._webview)
-
-        #### 快捷键 ####
-        # 按CTRL+G焦点跳转到地址栏
-        # urlbar_shortcut = QShortcut(QKeySequence("CTRL+G"), self)
-        # urlbar_shortcut.activated.connect(self._toolbar.url_bar.setFocus)
-        # 按F5刷新页面
-        # refresh_shortcut = QShortcut(QKeySequence("F5"), self)
-        # refresh_shortcut.activated.connect(self._webview.reload)
-
-    def _navToUrl(self):
-        "跳转网页"
-        # url = self._toolbar.url_bar.text()
-        qurl = QUrl(url)
-        if qurl.scheme() == '':
-            qurl.setScheme('http')
-        self._webview.setUrl(qurl)
-
-    def _urlChanged(self, qurl):
-        "url改变"
-        url = qurl.toString()
-        # self._toolbar.url_bar.setText(url)
-        self.setWindowTitle(url)
-        History().add_history(url)
-
-    def _loadProgress(self, percent):
-        "加载进度改变"
-        title = self._webview.title()
-        self.setWindowTitle("[{}%]{}".format(percent, title))
-
-    def _loadFinished(self):
-        "加载完成"
-        title = self._webview.title()
-        self.setWindowTitle(title)
-
-    def _titleChanged(self, title):
-        "标题变化"
-        self.setWindowTitle(title)
-        History().update_history_title(self._webview.url().toString(), title)
 
 class CustomWebPage(QWebPage):
     "配置web页面属性"
@@ -224,6 +176,11 @@ class WebView(QWebView):
         # 指定打开界面的 URL
         if qurl != None:
             self.setUrl(qurl)
+        
+        # 按F5刷新页面
+        refresh_shortcut = QShortcut(QKeySequence("F5"), self)
+        refresh_shortcut.activated.connect(self.reload)
+
 
 class StatusBar(QStatusBar):
     def __init__(self, parent=None):
