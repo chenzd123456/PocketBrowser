@@ -76,6 +76,12 @@ class TabWebWidget(QTabWidget):
         # 按F5刷新当前页
         reload_shortcut = QShortcut(QKeySequence("F5"), self)
         reload_shortcut.activated.connect(self._reloadCurrentTab)
+        # 按CTRL+LEFT切换前一个标签页
+        prev_tab_shortcut = QShortcut(QKeySequence("CTRL+LEFT"), self)
+        prev_tab_shortcut.activated.connect(self._prev_tab)
+        # 按CTRL+RIGHT切换后一个标签页
+        prev_tab_shortcut = QShortcut(QKeySequence("CTRL+RIGHT"), self)
+        prev_tab_shortcut.activated.connect(self._next_tab)
 
     def _addOneTab(self, url=None):
         "添加一个标签页"
@@ -88,26 +94,59 @@ class TabWebWidget(QTabWidget):
             lambda qurl: self.setTabText(index, qurl.toString()))
         tab.titleChanged.connect(
             lambda title: self.setTabText(index, title))
-        tab.loadProgress.connect(
-            lambda progress: self._top.statusBar().showMessage("Loading {}%".format(progress), 1000))
-        tab.loadFinished.connect(
-            lambda: self._top.statusBar().showMessage("Load Finished", 1000))
 
     def _addOneTabFore(self, url=None):
         "前台添加一个标签页"
         self._addOneTab(url)
-        self.setCurrentIndex(self.count() - 1)
+        self._switch_tab(self.count() - 1)
 
     def _delOneTab(self, index):
         "删除一个标签页"
-        self.removeTab(index)
-        if self.count() == 0:
+        if self.count() <= 1:
             self._top.close()
+        else:
+            self.removeTab(index)
+        self._bind_current_tab_event()
 
     def _reloadCurrentTab(self):
         "刷新当前页"
         self.currentWidget().reload()
         self._top.statusBar().showMessage("Reloading ...", 5000)
+
+    def _prev_tab(self):
+        "切换前一个标签页"
+        if self.count() > 1:
+            cur_index = self.currentIndex()
+
+            if cur_index == 0:
+                cur_index = self.count() - 1
+            else:
+                cur_index = cur_index - 1
+
+            self._switch_tab(cur_index)
+
+    def _next_tab(self):
+        "切换后一个标签页"
+        if self.count() > 1:
+            cur_index = self.currentIndex()
+
+            if cur_index == self.count() - 1:
+                cur_index = 0
+            else:
+                cur_index = cur_index + 1
+
+            self._switch_tab(cur_index)
+
+    def _switch_tab(self, index):
+        "切换标签页"
+        self.setCurrentIndex(index)
+        self._bind_current_tab_event()
+
+    def _bind_current_tab_event(self):
+        self.currentWidget().loadProgress.connect(
+            lambda progress: self._top.statusBar().showMessage("Loading {}%".format(progress), 1000))
+        self.currentWidget().loadFinished.connect(
+            lambda: self._top.statusBar().showMessage("Load Finished", 1000))
 
 
 class CustomWebPage(QWebPage):
