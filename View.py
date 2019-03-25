@@ -1,11 +1,13 @@
 import sys
 
-from PyQt5.QtCore import QSize, Qt, QUrl, QPoint
+from PyQt5.QtCore import QPoint, QSize, Qt, QUrl
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWebKitWidgets import QWebPage, QWebView
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTabWidget, QToolBar, QToolTip, QStatusBar, QLabel, QHBoxLayout)
+from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMainWindow,
+                             QShortcut, QStatusBar, QTabWidget, QToolBar,
+                             QToolTip)
 
-from Model import History, Config
+from Model import Config, History
 
 
 class MainWindow(QMainWindow):
@@ -71,6 +73,9 @@ class TabWebWidget(QTabWidget):
         # 按CTRL+N新建标签页
         new_tab_shortcut = QShortcut(QKeySequence("CTRL+N"), self)
         new_tab_shortcut.activated.connect(self._addOneTabFore)
+        # 按F5刷新当前页
+        reload_shortcut = QShortcut(QKeySequence("F5"), self)
+        reload_shortcut.activated.connect(self._reloadCurrentTab)
 
     def _addOneTab(self, url=None):
         "添加一个标签页"
@@ -99,6 +104,11 @@ class TabWebWidget(QTabWidget):
         if self.count() == 0:
             self._top.close()
 
+    def _reloadCurrentTab(self):
+        "刷新当前页"
+        self.currentWidget().reload()
+        self._top.statusBar().showMessage("Reloading ...", 5000)
+
 
 class CustomWebPage(QWebPage):
     "配置web页面属性"
@@ -123,10 +133,6 @@ class WebView(QWebView):
         # 指定打开界面的 URL
         if qurl != None:
             self.setUrl(qurl)
-
-        # 按F5刷新页面
-        refresh_shortcut = QShortcut(QKeySequence("F5"), self)
-        refresh_shortcut.activated.connect(self.reload)
 
 
 class StatusBar(QStatusBar):
