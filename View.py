@@ -5,9 +5,9 @@ from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWebKitWidgets import QWebPage, QWebView
 from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMainWindow,
                              QShortcut, QStatusBar, QTabWidget, QToolBar,
-                             QToolTip)
+                             QToolTip, QLineEdit)
 
-from Model import Config, History
+from Model import Config, History, CmdInterpreter
 
 
 class MainWindow(QMainWindow):
@@ -23,10 +23,14 @@ class MainWindow(QMainWindow):
         #### 快捷键 ####
         # 按F11全屏
         fullscreen_shortcut = QShortcut(QKeySequence("F11"), self)
-        fullscreen_shortcut.activated.connect(self._showFullScreen)
-        # 按ESC退出全屏
-        normalscreen_shortcut = QShortcut(QKeySequence("ESCAPE"), self)
-        normalscreen_shortcut.activated.connect(self._showNormalScreen)
+        fullscreen_shortcut.activated.connect(self._swithFullScreen)
+        # 按ESC进入命令模式
+        cmd_mode_shortcut = QShortcut(QKeySequence("ESCAPE"), self)
+        cmd_mode_shortcut.activated.connect(
+            lambda: self.statusBar().setCmdMode(True))
+
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
 
     def _swithFullScreen(self):
         "切换全屏"
@@ -143,6 +147,7 @@ class TabWebWidget(QTabWidget):
         self._bind_current_tab_event()
 
     def _bind_current_tab_event(self):
+        "绑定当前标签页的事件"
         self.currentWidget().loadProgress.connect(
             lambda progress: self._top.statusBar().showMessage("Loading {}%".format(progress), 1000))
         self.currentWidget().loadFinished.connect(
@@ -175,5 +180,55 @@ class WebView(QWebView):
 
 
 class StatusBar(QStatusBar):
+    "状态栏"
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+        # 禁止右下角QSizeGrip部件调整窗口大小
+
+        self._is_cmd_mode = False
+
+        self.setSizeGripEnabled(False)
+        self._console = QLineEdit()
+        self._console.setVisible(False)
+        self._status_label = QLabel()
+
+        self.addPermanentWidget(self._console, True)
+        self.addPermanentWidget(self._status_label)
+        
+
+        self._updateStatusBar()
+
+        self._console.enterEvent
+
+    @property
+    def status_label(self):
+        return self._status_label
+
+    def showMessage(self, text, timeout=0):
+        if not self._is_cmd_mode:
+            super().showMessage(text, timeout)
+
+    def showConsole(self, text):
+        if self._is_cmd_mode:
+            super().showMessage(text)
+
+    def showStatus(self, text):
+        self._status_label.setText(text)
+
+    def isCmdMode(self):
+        return self._is_cmd_mode
+
+    def setCmdMode(self, bool_):
+        if self._is_cmd_mode != bool_:
+            self._is_cmd_mode = bool_
+            self._updateStatusBar()
+
+    def _updateStatusBar(self):
+        if self._is_cmd_mode:
+            self._console.setVisible(True)
+            self._console.setFocus()
+            self._status_label.setText("[ Command Mode ]")
+        else:
+            self._console.setVisible(False)
+            self._status_label.setText("[ Normal  Mode ]")
