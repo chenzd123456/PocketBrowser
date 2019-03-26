@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMainWindow,
                              QShortcut, QStatusBar, QTabWidget, QToolBar,
                              QToolTip, QLineEdit)
 
-from Model import Config, History
+from Model import Config, History, CmdInterpreter
 
 
 class MainWindow(QMainWindow):
