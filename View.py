@@ -68,7 +68,7 @@ class TabWebWidget(QTabWidget):
         # 设置关闭标签后的行为 Qt.SelectLeftTab, Qt.SelectRightTab, Qt.SelectPreviousTab
         # self.tarBar().setSelectionBehaviorOnRemove(Qt.SelectPreviousTab)
 
-        self._addOneTabFore()
+        self.addOneTabFore()
 
         self.tabBarDoubleClicked.connect(self._delOneTab)
         self.tabCloseRequested.connect(self._delOneTab)
@@ -76,7 +76,7 @@ class TabWebWidget(QTabWidget):
         #### 快捷键 ####
         # 按CTRL+N新建标签页
         new_tab_shortcut = QShortcut(QKeySequence("CTRL+N"), self)
-        new_tab_shortcut.activated.connect(self._addOneTabFore)
+        new_tab_shortcut.activated.connect(self.addOneTabFore)
         # 按F5刷新当前页
         reload_shortcut = QShortcut(QKeySequence("F5"), self)
         reload_shortcut.activated.connect(self._reloadCurrentTab)
@@ -87,7 +87,10 @@ class TabWebWidget(QTabWidget):
         prev_tab_shortcut = QShortcut(QKeySequence("CTRL+RIGHT"), self)
         prev_tab_shortcut.activated.connect(self._next_tab)
 
-    def _addOneTab(self, url=None):
+    def openUrlCurrentTab(self, url):
+        self.currentWidget().setUrl(QUrl(url))
+
+    def addOneTab(self, url=None):
         "添加一个标签页"
         if url == None:
             url = Config().init_page_url
@@ -99,9 +102,9 @@ class TabWebWidget(QTabWidget):
         tab.titleChanged.connect(
             lambda title: self.setTabText(index, title))
 
-    def _addOneTabFore(self, url=None):
+    def addOneTabFore(self, url=None):
         "前台添加一个标签页"
-        self._addOneTab(url)
+        self.addOneTab(url)
         self._switch_tab(self.count() - 1)
 
     def _delOneTab(self, index):
@@ -149,9 +152,9 @@ class TabWebWidget(QTabWidget):
     def _bind_current_tab_event(self):
         "绑定当前标签页的事件"
         self.currentWidget().loadProgress.connect(
-            lambda progress: self._top.statusBar().showMessage("Loading {}%".format(progress), 1000))
+            lambda progress: self._top.statusBar().showMessage("Loading {}% {}".format(progress, self.currentWidget().url().toString()), 10000))
         self.currentWidget().loadFinished.connect(
-            lambda: self._top.statusBar().showMessage("Load Finished", 1000))
+            lambda: self._top.statusBar().showMessage("Load Finished", 3000))
 
 
 class CustomWebPage(QWebPage):
@@ -201,6 +204,10 @@ class StatusBar(QStatusBar):
     @property
     def status_label(self):
         return self._status_label
+
+    @property
+    def console_bar(self):
+        return self._console
 
     def showMessage(self, text, timeout=0):
         if not self._is_cmd_mode:
