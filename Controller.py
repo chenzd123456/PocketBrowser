@@ -10,6 +10,16 @@ class PocketBrowser(object):
             "o": self._open_url,
             "opentab": self._open_url_new_tab,
             "ot": self._open_url_new_tab,
+            "close": self._close,
+            "c": self._close,
+            "closeother": self._closeOther,
+            "co": self._closeOther,
+            "closeleft": self._closeLeft,
+            "cl": self._closeLeft,
+            "closeright": self._closeRight,
+            "cr": self._closeRight,
+            "quit": self._quit,
+            "q": self._quit
         }
 
     def run(self, argv):
@@ -31,13 +41,22 @@ class PocketBrowser(object):
             self._main_window.statusBar().showMessage("commmand error", 5000)
 
     def _open_url(self, args_list):
-        try:
-            self._main_window.centralWidget().openUrlCurrentTab(args_list[0])
-        except:
-            raise
+        self._main_window.centralWidget().openUrlCurrentTab(args_list[0])
 
     def _open_url_new_tab(self, args_list):
-        try:
-            self._main_window.centralWidget().addOneTabFore(args_list[0])
-        except:
-            raise
+        self._main_window.centralWidget().addOneTabFore(args_list[0])
+
+    def _close(self, args_list):
+        self._main_window.centralWidget().closeCurrentTab()
+
+    def _quit(self, args_list):
+        self._main_window.close()
+
+    def _closeOther(self, args_list):
+        self._main_window.centralWidget().closeOtherTab()
+
+    def _closeLeft(self, args_list):
+        self._main_window.centralWidget().closeLeftTab()
+
+    def _closeRight(self, args_list):
+        self._main_window.centralWidget().closeRightTab()

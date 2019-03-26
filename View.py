@@ -90,7 +90,30 @@ class TabWebWidget(QTabWidget):
     def openUrlCurrentTab(self, url):
         self.currentWidget().setUrl(QUrl(url))
 
-    def addOneTab(self, url=None):
+    def addOneTabFore(self, url=None):
+        "前台添加一个标签页"
+        self._addOneTab(url)
+        self._switch_tab(self.count() - 1)
+
+    def closeCurrentTab(self):
+        self._delOneTab(self.currentIndex())
+
+    def closeOtherTab(self):
+        for i in range(self.count() - 1):
+            if self.currentIndex() == 0:
+                self._delOneTab(1)
+            else:
+                self._delOneTab(0)
+
+    def closeLeftTab(self):
+        for i in range(self.currentIndex()):
+            self._delOneTab(0)
+
+    def closeRightTab(self):
+        for i in range(self.count() - self.currentIndex() - 1):
+            self._delOneTab(self.currentIndex() + 1)
+
+    def _addOneTab(self, url=None):
         "添加一个标签页"
         if url == None:
             url = Config().init_page_url
@@ -101,11 +124,6 @@ class TabWebWidget(QTabWidget):
             lambda qurl: self.setTabText(index, qurl.toString()))
         tab.titleChanged.connect(
             lambda title: self.setTabText(index, title))
-
-    def addOneTabFore(self, url=None):
-        "前台添加一个标签页"
-        self.addOneTab(url)
-        self._switch_tab(self.count() - 1)
 
     def _delOneTab(self, index):
         "删除一个标签页"
