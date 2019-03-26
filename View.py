@@ -29,8 +29,8 @@ class MainWindow(QMainWindow):
         cmd_mode_shortcut.activated.connect(
             lambda: self.statusBar().setCmdMode(True))
 
-    def keyPressEvent(self, event):
-        super().keyPressEvent(event)
+    def setWebViewFocus(self):
+        self.centralWidget().currentWidget().setFocus()
 
     def _swithFullScreen(self):
         "切换全屏"
@@ -86,6 +86,12 @@ class TabWebWidget(QTabWidget):
         # 按CTRL+RIGHT切换后一个标签页
         prev_tab_shortcut = QShortcut(QKeySequence("CTRL+RIGHT"), self)
         prev_tab_shortcut.activated.connect(self._next_tab)
+        # 按CTRL+B后退
+        backward_shortcut = QShortcut(QKeySequence("CTRL+B"), self)
+        backward_shortcut.activated.connect(self.currentWidget().back)
+        # 按CTRL+F前进
+        forward_shortcut = QShortcut(QKeySequence("CTRL+F"), self)
+        forward_shortcut.activated.connect(self.currentWidget().forward)
 
     def openUrlCurrentTab(self, url):
         self.currentWidget().setUrl(QUrl(url))
