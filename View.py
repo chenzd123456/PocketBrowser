@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMainWindow,
 
 from Model import Config, History
 
+
 class MainWindow(QMainWindow):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super().__init__(parent=parent, flags=flags)
@@ -194,11 +195,8 @@ class StatusBar(QStatusBar):
 
         self.addPermanentWidget(self._console, True)
         self.addPermanentWidget(self._status_label)
-        
 
         self._updateStatusBar()
-
-        self._console.enterEvent
 
     @property
     def status_label(self):
